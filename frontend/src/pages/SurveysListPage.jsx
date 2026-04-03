@@ -1,208 +1,299 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Box, Grid, Card, CardContent, CardActions, Typography, Button, Chip,
+  IconButton, Snackbar, Alert, Skeleton, Divider, Tooltip,
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import ShareIcon from '@mui/icons-material/Share';
+import DeleteIcon from '@mui/icons-material/Delete';
+import PublicIcon from '@mui/icons-material/Public';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import DraftsIcon from '@mui/icons-material/Drafts';
+import PeopleIcon from '@mui/icons-material/People';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { getSurveys, deleteSurvey, publishSurvey } from '../services/api';
-import LoadingSpinner from '../components/LoadingSpinner';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { useSnackbar } from '../hooks/useSnackbar';
+
+const buildStats = (surveys) => {
+  const published = surveys.filter((s) => s.is_published).length;
+  const drafts = surveys.length - published;
+  const totalResponses = surveys.reduce((sum, s) => sum + Number(s.response_count || 0), 0);
+  return [
+    {
+      label: 'Total Surveys', value: surveys.length,
+      icon: <AssignmentIcon sx={{ fontSize: 32 }} />,
+      gradient: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+    },
+    {
+      label: 'Published', value: published,
+      icon: <PublicIcon sx={{ fontSize: 32 }} />,
+      gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    },
+    {
+      label: 'Drafts', value: drafts,
+      icon: <DraftsIcon sx={{ fontSize: 32 }} />,
+      gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+    },
+    {
+      label: 'Total Responses', value: totalResponses,
+      icon: <PeopleIcon sx={{ fontSize: 32 }} />,
+      gradient: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+    },
+  ];
+};
 
 function SurveysListPage() {
   const navigate = useNavigate();
   const [surveys, setSurveys] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState({});
-  const [copySuccess, setCopySuccess] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null, title: '' });
+  const { snackbar, showSuccess, showError, showInfo, hideSnackbar } = useSnackbar();
 
   const fetchSurveys = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
-      const response = await getSurveys();
-      setSurveys(response.data);
-    } catch (err) {
-      setError('Failed to load surveys. Please check your connection and try again.');
-      console.error('Error fetching surveys:', err);
+      const res = await getSurveys();
+      setSurveys(res.data);
+    } catch {
+      showError('Failed to load surveys. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showError]);
 
-  useEffect(() => {
-    fetchSurveys();
-  }, [fetchSurveys]);
+  useEffect(() => { fetchSurveys(); }, [fetchSurveys]);
 
-  const handleDelete = async (id, title) => {
-    if (!window.confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
-      return;
-    }
-    setActionLoading((prev) => ({ ...prev, [id + '_delete']: true }));
+  const handleDeleteClick = (id, title) => {
+    setConfirmDialog({ open: true, id, title });
+  };
+
+  const handleDeleteConfirm = async () => {
+    const { id } = confirmDialog;
+    setConfirmDialog({ open: false, id: null, title: '' });
+    setActionLoading((p) => ({ ...p, [`${id}_delete`]: true }));
     try {
       await deleteSurvey(id);
       setSurveys((prev) => prev.filter((s) => s.id !== id));
-    } catch (err) {
-      alert('Failed to delete survey. Please try again.');
-      console.error('Error deleting survey:', err);
+      showSuccess('Survey deleted successfully.');
+    } catch {
+      showError('Failed to delete survey. Please try again.');
     } finally {
-      setActionLoading((prev) => ({ ...prev, [id + '_delete']: false }));
+      setActionLoading((p) => ({ ...p, [`${id}_delete`]: false }));
     }
   };
 
-  const handlePublishToggle = async (id) => {
-    setActionLoading((prev) => ({ ...prev, [id + '_publish']: true }));
+  const handlePublishToggle = async (survey) => {
+    setActionLoading((p) => ({ ...p, [`${survey.id}_publish`]: true }));
     try {
-      const response = await publishSurvey(id);
-      setSurveys((prev) => prev.map((s) => (s.id === id ? { ...s, is_published: response.data.is_published } : s)));
-    } catch (err) {
-      alert('Failed to update publish status. Please try again.');
-      console.error('Error toggling publish:', err);
+      const res = await publishSurvey(survey.id);
+      setSurveys((prev) =>
+        prev.map((s) => (s.id === survey.id ? { ...s, is_published: res.data.is_published } : s))
+      );
+      showSuccess(res.data.is_published ? 'Survey published!' : 'Survey unpublished.');
+    } catch {
+      showError('Failed to update publish status.');
     } finally {
-      setActionLoading((prev) => ({ ...prev, [id + '_publish']: false }));
+      setActionLoading((p) => ({ ...p, [`${survey.id}_publish`]: false }));
     }
   };
 
   const handleShare = (id) => {
     const url = `${window.location.origin}/surveys/${id}/take`;
-    navigator.clipboard.writeText(url).then(() => {
-      setCopySuccess(id);
-      setTimeout(() => setCopySuccess(null), 2000);
-    }).catch(() => {
-      prompt('Copy this survey link:', url);
-    });
+    navigator.clipboard.writeText(url)
+      .then(() => showInfo('Survey link copied to clipboard!'))
+      .catch(() => showError('Could not copy link automatically.'));
   };
 
-  if (loading) {
-    return <LoadingSpinner message="Loading surveys..." />;
-  }
+  const stats = buildStats(surveys);
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Surveys</h1>
-          <p className="text-gray-500 mt-1">{surveys.length} survey{surveys.length !== 1 ? 's' : ''} total</p>
-        </div>
-        <button
-          onClick={() => navigate('/surveys/new')}
-          className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-6 py-2.5 rounded-lg transition-colors duration-200 flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Create New Survey
-        </button>
-      </div>
+    <Box sx={{ maxWidth: 1152, mx: 'auto', px: { xs: 2, sm: 3 }, py: 4 }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px' }}>
+            My Surveys
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Manage and track your surveys
+          </Typography>
+        </Box>
+        <Button variant="contained" startIcon={<AddIcon />} size="large" sx={{ px: 3 }}
+          onClick={() => navigate('/surveys/new')}>
+          Create Survey
+        </Button>
+      </Box>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
-          <span>{error}</span>
-          <button onClick={fetchSurveys} className="text-red-700 underline hover:no-underline ml-4 text-sm font-medium">
-            Retry
-          </button>
-        </div>
-      )}
+      {/* Stats Cards */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {stats.map((stat) => (
+          <Grid item xs={6} md={3} key={stat.label}>
+            <Card sx={{
+              background: stat.gradient, color: 'white',
+              '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 30px rgba(0,0,0,0.15)' },
+            }}>
+              <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pb: '16px !important' }}>
+                <Box>
+                  <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: 'white' }}>
+                    {loading ? '—' : stat.value}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)', mt: 0.5, fontWeight: 500 }}>
+                    {stat.label}
+                  </Typography>
+                </Box>
+                <Box sx={{ color: 'rgba(255,255,255,0.7)', mt: 0.5 }}>{stat.icon}</Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
 
-      {surveys.length === 0 && !error ? (
-        <div className="text-center py-20 bg-white rounded-xl shadow-sm border border-gray-100">
-          <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">No surveys yet</h2>
-          <p className="text-gray-400 mb-6">Create your first survey to get started collecting responses.</p>
-          <button
-            onClick={() => navigate('/surveys/new')}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-6 py-2.5 rounded-lg transition-colors duration-200"
-          >
-            Create Your First Survey
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {surveys.map((survey) => (
-            <div key={survey.id} className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 flex flex-col">
-              <div className="p-6 flex-1">
-                <div className="flex items-start justify-between mb-3">
-                  <h2 className="text-lg font-semibold text-gray-900 leading-tight line-clamp-2 flex-1 pr-2">
-                    {survey.title}
-                  </h2>
-                  <span
-                    className={`shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      survey.is_published
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    {survey.is_published ? 'Published' : 'Draft'}
-                  </span>
-                </div>
-                {survey.description && (
-                  <p className="text-gray-500 text-sm mb-4 line-clamp-2">{survey.description}</p>
-                )}
-                <div className="flex items-center gap-4 text-sm text-gray-400">
-                  <span className="flex items-center gap-1">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    {survey.response_count || 0} response{(survey.response_count || 0) !== 1 ? 's' : ''}
-                  </span>
-                  <span>{new Date(survey.created_at).toLocaleDateString()}</span>
-                </div>
-              </div>
-
-              <div className="px-6 py-4 border-t border-gray-50 bg-gray-50 rounded-b-xl">
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => navigate(`/surveys/${survey.id}/edit`)}
-                    className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors duration-150"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => navigate(`/surveys/${survey.id}/results`)}
-                    className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors duration-150"
-                  >
-                    Results
-                  </button>
-                  <button
-                    onClick={() => handleShare(survey.id)}
-                    disabled={!survey.is_published}
-                    title={!survey.is_published ? 'Publish to share' : 'Copy share link'}
-                    className={`flex-1 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors duration-150 ${
-                      survey.is_published
-                        ? copySuccess === survey.id
-                          ? 'bg-green-500 text-white border border-green-500'
-                          : 'bg-white border border-gray-200 hover:bg-gray-50 text-gray-700'
-                        : 'bg-white border border-gray-200 text-gray-300 cursor-not-allowed'
-                    }`}
-                  >
-                    {copySuccess === survey.id ? 'Copied!' : 'Share'}
-                  </button>
-                  <button
-                    onClick={() => handlePublishToggle(survey.id)}
-                    disabled={actionLoading[survey.id + '_publish']}
-                    className={`flex-1 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors duration-150 ${
-                      survey.is_published
-                        ? 'bg-yellow-50 border border-yellow-200 hover:bg-yellow-100 text-yellow-700'
-                        : 'bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700'
-                    } disabled:opacity-50`}
-                  >
-                    {actionLoading[survey.id + '_publish']
-                      ? '...'
-                      : survey.is_published
-                      ? 'Unpublish'
-                      : 'Publish'}
-                  </button>
-                  <button
-                    onClick={() => handleDelete(survey.id, survey.title)}
-                    disabled={actionLoading[survey.id + '_delete']}
-                    className="flex-1 bg-white border border-red-200 hover:bg-red-50 text-red-600 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors duration-150 disabled:opacity-50"
-                  >
-                    {actionLoading[survey.id + '_delete'] ? '...' : 'Delete'}
-                  </button>
-                </div>
-              </div>
-            </div>
+      {/* Survey Cards Grid */}
+      {loading ? (
+        <Grid container spacing={3}>
+          {[1, 2, 3].map((i) => (
+            <Grid item xs={12} md={6} lg={4} key={i}>
+              <Card><CardContent><Skeleton variant="rectangular" height={140} sx={{ borderRadius: 2 }} /></CardContent></Card>
+            </Grid>
           ))}
-        </div>
+        </Grid>
+      ) : surveys.length === 0 ? (
+        <Card sx={{ textAlign: 'center', py: 10, px: 4, border: '2px dashed #e2e8f0' }}>
+          <AssignmentIcon sx={{ fontSize: 80, color: '#e0e7ff', mb: 2 }} />
+          <Typography variant="h5" sx={{ fontWeight: 700, color: '#0f172a', mb: 1 }}>
+            No surveys yet
+          </Typography>
+          <Typography color="text.secondary" sx={{ mb: 4 }}>
+            Create your first survey to start collecting responses.
+          </Typography>
+          <Button variant="contained" startIcon={<AddIcon />} size="large"
+            onClick={() => navigate('/surveys/new')}>
+            Create Your First Survey
+          </Button>
+        </Card>
+      ) : (
+        <Grid container spacing={3}>
+          {surveys.map((survey) => (
+            <Grid item xs={12} md={6} lg={4} key={survey.id}>
+              <Card sx={{
+                display: 'flex', flexDirection: 'column', height: '100%',
+                '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 8px 25px rgba(99,102,241,0.15)' },
+              }}>
+                <CardContent sx={{ flexGrow: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#0f172a', lineHeight: 1.3, flex: 1, pr: 1 }}>
+                      {survey.title}
+                    </Typography>
+                    <Chip
+                      label={survey.is_published ? 'Published' : 'Draft'}
+                      size="small"
+                      sx={{
+                        fontWeight: 600, fontSize: '0.7rem', flexShrink: 0,
+                        bgcolor: survey.is_published ? '#d1fae5' : '#f1f5f9',
+                        color: survey.is_published ? '#065f46' : '#475569',
+                      }}
+                    />
+                  </Box>
+                  {survey.description && (
+                    <Typography variant="body2" color="text.secondary" sx={{
+                      mb: 2,
+                      display: '-webkit-box', WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                    }}>
+                      {survey.description}
+                    </Typography>
+                  )}
+                  <Box sx={{ display: 'flex', gap: 2, color: 'text.secondary' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <PeopleIcon sx={{ fontSize: 15 }} />
+                      <Typography variant="caption">
+                        {survey.response_count || 0} response{Number(survey.response_count) !== 1 ? 's' : ''}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <CalendarTodayIcon sx={{ fontSize: 13 }} />
+                      <Typography variant="caption">
+                        {new Date(survey.created_at).toLocaleDateString()}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </CardContent>
+
+                <Divider />
+                <CardActions sx={{ px: 2, py: 1.5, flexWrap: 'wrap', gap: 0.5 }}>
+                  <Button size="small" variant="outlined" color="secondary" startIcon={<EditIcon />}
+                    onClick={() => navigate(`/surveys/${survey.id}/edit`)}>
+                    Edit
+                  </Button>
+                  <Button size="small" variant="outlined" color="primary" startIcon={<BarChartIcon />}
+                    onClick={() => navigate(`/surveys/${survey.id}/results`)}>
+                    Results
+                  </Button>
+                  <Tooltip title={!survey.is_published ? 'Publish first to share' : 'Copy link'}>
+                    <span>
+                      <Button
+                        size="small" variant="outlined" startIcon={<ShareIcon />}
+                        disabled={!survey.is_published}
+                        onClick={() => handleShare(survey.id)}
+                        sx={{ color: '#0ea5e9', borderColor: '#0ea5e9', '&:hover': { borderColor: '#0284c7', bgcolor: '#f0f9ff' } }}
+                      >
+                        Share
+                      </Button>
+                    </span>
+                  </Tooltip>
+                  <Button
+                    size="small"
+                    variant={survey.is_published ? 'outlined' : 'contained'}
+                    color={survey.is_published ? 'warning' : 'success'}
+                    disabled={!!actionLoading[`${survey.id}_publish`]}
+                    onClick={() => handlePublishToggle(survey)}
+                    sx={{ minWidth: 90 }}
+                  >
+                    {actionLoading[`${survey.id}_publish`] ? '...' : survey.is_published ? 'Unpublish' : 'Publish'}
+                  </Button>
+                  <Tooltip title="Delete survey">
+                    <IconButton
+                      size="small" color="error"
+                      disabled={!!actionLoading[`${survey.id}_delete`]}
+                      onClick={() => handleDeleteClick(survey.id, survey.title)}
+                      sx={{ ml: 'auto' }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
       )}
-    </div>
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        title="Delete Survey"
+        message={`Are you sure you want to delete "${confirmDialog.title}"? This action cannot be undone.`}
+        confirmText="Delete"
+        confirmColor="error"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setConfirmDialog({ open: false, id: null, title: '' })}
+      />
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={snackbar.severity === 'error' ? 5000 : 3000}
+        onClose={hideSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={hideSnackbar} severity={snackbar.severity} variant="filled" sx={{ borderRadius: 2 }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 }
 

@@ -1,11 +1,23 @@
 import React from 'react';
+import { Box, CircularProgress, Typography } from '@mui/material';
 
 function LoadingSpinner({ message = 'Loading...' }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-      <p className="text-gray-500 text-sm">{message}</p>
-    </div>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        py: 10,
+        gap: 2,
+      }}
+    >
+      <CircularProgress size={48} thickness={4} sx={{ color: '#6366f1' }} />
+      <Typography variant="body2" color="text.secondary">
+        {message}
+      </Typography>
+    </Box>
   );
 }
 

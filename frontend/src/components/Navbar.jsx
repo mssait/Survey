@@ -1,38 +1,56 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import AddIcon from '@mui/icons-material/Add';
 
 function Navbar() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isBuilder = location.pathname.includes('/surveys/');
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200">
-      <div className="container mx-auto px-4 max-w-6xl">
-        <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex items-center space-x-2">
-            <svg
-              className="w-7 h-7 text-blue-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-              />
-            </svg>
-            <span className="text-xl font-bold text-gray-900">SurveyTool</span>
-          </Link>
-          <button
+    <AppBar
+      position="sticky"
+      elevation={0}
+      sx={{
+        background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+        borderBottom: '1px solid rgba(255,255,255,0.1)',
+      }}
+    >
+      <Toolbar sx={{ maxWidth: 1152, width: '100%', mx: 'auto', px: { xs: 2, sm: 3 } }}>
+        <Box
+          onClick={() => navigate('/')}
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer', flexGrow: 1 }}
+        >
+          <AssignmentIcon sx={{ color: 'white', fontSize: 28 }} />
+          <Typography variant="h6" sx={{ fontWeight: 800, color: 'white', letterSpacing: '-0.3px' }}>
+            SurveyTool
+          </Typography>
+        </Box>
+
+        {!isBuilder && (
+          <Button
+            variant="outlined"
+            startIcon={<AddIcon />}
             onClick={() => navigate('/surveys/new')}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg transition-colors duration-200 text-sm"
+            sx={{
+              color: 'white',
+              borderColor: 'rgba(255,255,255,0.5)',
+              fontWeight: 700,
+              px: 2.5,
+              '&:hover': {
+                backgroundColor: 'white',
+                borderColor: 'white',
+                color: '#6366f1',
+              },
+            }}
           >
-            + New Survey
-          </button>
-        </div>
-      </div>
-    </nav>
+            New Survey
+          </Button>
+        )}
+      </Toolbar>
+    </AppBar>
   );
 }
 

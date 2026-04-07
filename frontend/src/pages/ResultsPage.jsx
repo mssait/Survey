@@ -162,7 +162,7 @@ function ResultsPage() {
   const { survey, response_count, questions } = results;
 
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto', px: { xs: 2, sm: 3 }, py: 4 }}>
+    <Box sx={{ maxWidth: 800, mx: 'auto' }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 4 }}>
         <IconButton onClick={() => navigate('/')} sx={{ color: '#64748b', mt: 0.3 }}>

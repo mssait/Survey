@@ -309,7 +309,7 @@ function SurveyBuilderPage() {
   if (loading) return <LoadingSpinner message="Loading survey..." />;
 
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto', px: { xs: 2, sm: 3 }, py: 4, pb: 12 }}>
+    <Box sx={{ maxWidth: 800, mx: 'auto', pb: 12 }}>
       {/* Page Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
         <IconButton onClick={() => navigate('/')} sx={{ color: '#64748b' }}>

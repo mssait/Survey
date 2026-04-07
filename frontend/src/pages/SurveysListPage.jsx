@@ -112,7 +112,7 @@ function SurveysListPage() {
   const stats = buildStats(surveys);
 
   return (
-    <Box sx={{ maxWidth: 1152, mx: 'auto', px: { xs: 2, sm: 3 }, py: 4 }}>
+    <Box sx={{ maxWidth: 1152, mx: 'auto' }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
         <Box>

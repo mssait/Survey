@@ -2,27 +2,24 @@ import React, { useState } from 'react';
 import { Box, AppBar, Toolbar, IconButton, Typography, useMediaQuery, useTheme } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import AssignmentIcon from '@mui/icons-material/Assignment';
-import Sidebar, { SIDEBAR_WIDTH, SIDEBAR_COLLAPSED_WIDTH } from './Sidebar';
+import Sidebar from './Sidebar';
+import { useSurveys } from '../context/SurveyContext';
 
 function Layout({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const { counts } = useSurveys();
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f8fafc' }}>
-      <Sidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
+      <Sidebar
+        mobileOpen={mobileOpen}
+        onMobileClose={() => setMobileOpen(false)}
+        counts={counts}
+      />
 
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          minWidth: 0,
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        {/* Mobile top bar */}
+      <Box component="main" sx={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         {!isDesktop && (
           <AppBar
             position="sticky"

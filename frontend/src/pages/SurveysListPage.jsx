@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box, Grid, Card, CardContent, CardActions, Typography, Button, Chip,
   IconButton, Snackbar, Alert, Skeleton, Divider, Tooltip,
@@ -9,68 +9,58 @@ import EditIcon from '@mui/icons-material/Edit';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import ShareIcon from '@mui/icons-material/Share';
 import DeleteIcon from '@mui/icons-material/Delete';
-import PublicIcon from '@mui/icons-material/Public';
 import AssignmentIcon from '@mui/icons-material/Assignment';
-import DraftsIcon from '@mui/icons-material/Drafts';
 import PeopleIcon from '@mui/icons-material/People';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import { getSurveys, deleteSurvey, publishSurvey } from '../services/api';
+import { deleteSurvey, publishSurvey } from '../services/api';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useSnackbar } from '../hooks/useSnackbar';
+import { useSurveys } from '../context/SurveyContext';
 
-const buildStats = (surveys) => {
-  const published = surveys.filter((s) => s.is_published).length;
-  const drafts = surveys.length - published;
-  const totalResponses = surveys.reduce((sum, s) => sum + Number(s.response_count || 0), 0);
-  return [
-    {
-      label: 'Total Surveys', value: surveys.length,
-      icon: <AssignmentIcon sx={{ fontSize: 32 }} />,
-      gradient: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-    },
-    {
-      label: 'Published', value: published,
-      icon: <PublicIcon sx={{ fontSize: 32 }} />,
-      gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-    },
-    {
-      label: 'Drafts', value: drafts,
-      icon: <DraftsIcon sx={{ fontSize: 32 }} />,
-      gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-    },
-    {
-      label: 'Total Responses', value: totalResponses,
-      icon: <PeopleIcon sx={{ fontSize: 32 }} />,
-      gradient: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
-    },
-  ];
+// Page title / subtitle per filter
+const VIEW_META = {
+  published: {
+    title: 'Published Surveys',
+    subtitle: 'Surveys currently live and accepting responses',
+  },
+  draft: {
+    title: 'Draft Surveys',
+    subtitle: 'Surveys not yet published',
+  },
+  responses: {
+    title: 'Total Responses',
+    subtitle: 'All surveys ranked by response count',
+  },
+  default: {
+    title: 'Dashboard',
+    subtitle: 'Manage and track all your surveys',
+  },
 };
 
 function SurveysListPage() {
   const navigate = useNavigate();
-  const [surveys, setSurveys] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [searchParams] = useSearchParams();
+  const filter = searchParams.get('filter'); // 'published' | 'draft' | 'responses' | null
+
+  const { surveys, setSurveys, loading, refresh } = useSurveys();
   const [actionLoading, setActionLoading] = useState({});
   const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null, title: '' });
   const { snackbar, showSuccess, showError, showInfo, hideSnackbar } = useSnackbar();
 
-  const fetchSurveys = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await getSurveys();
-      setSurveys(res.data);
-    } catch {
-      showError('Failed to load surveys. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, [showError]);
+  // Load on mount
+  useEffect(() => { refresh(); }, [refresh]);
 
-  useEffect(() => { fetchSurveys(); }, [fetchSurveys]);
+  // Derive the visible list from the active filter
+  const filteredSurveys = (() => {
+    if (filter === 'published') return surveys.filter((s) => s.is_published);
+    if (filter === 'draft') return surveys.filter((s) => !s.is_published);
+    if (filter === 'responses') return [...surveys].sort((a, b) => Number(b.response_count || 0) - Number(a.response_count || 0));
+    return surveys;
+  })();
 
-  const handleDeleteClick = (id, title) => {
-    setConfirmDialog({ open: true, id, title });
-  };
+  const meta = VIEW_META[filter] ?? VIEW_META.default;
+
+  const handleDeleteClick = (id, title) => setConfirmDialog({ open: true, id, title });
 
   const handleDeleteConfirm = async () => {
     const { id } = confirmDialog;
@@ -109,18 +99,16 @@ function SurveysListPage() {
       .catch(() => showError('Could not copy link automatically.'));
   };
 
-  const stats = buildStats(surveys);
-
   return (
     <Box sx={{ maxWidth: 1152, mx: 'auto' }}>
-      {/* Header */}
+      {/* Page header */}
       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px' }}>
-            My Surveys
+            {meta.title}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Manage and track your surveys
+            {meta.subtitle}
           </Typography>
         </Box>
         <Button variant="contained" startIcon={<AddIcon />} size="large" sx={{ px: 3 }}
@@ -129,31 +117,24 @@ function SurveysListPage() {
         </Button>
       </Box>
 
-      {/* Stats Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {stats.map((stat) => (
-          <Grid item xs={6} md={3} key={stat.label}>
-            <Card sx={{
-              background: stat.gradient, color: 'white',
-              '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 30px rgba(0,0,0,0.15)' },
-            }}>
-              <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pb: '16px !important' }}>
-                <Box>
-                  <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: 'white' }}>
-                    {loading ? '—' : stat.value}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)', mt: 0.5, fontWeight: 500 }}>
-                    {stat.label}
-                  </Typography>
-                </Box>
-                <Box sx={{ color: 'rgba(255,255,255,0.7)', mt: 0.5 }}>{stat.icon}</Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+      {/* Responses view: summary card at top */}
+      {filter === 'responses' && !loading && (
+        <Card sx={{ mb: 3, background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)', color: 'white' }}>
+          <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 3, py: '20px !important' }}>
+            <PeopleIcon sx={{ fontSize: 48, color: 'rgba(255,255,255,0.8)' }} />
+            <Box>
+              <Typography variant="h3" sx={{ fontWeight: 800, color: 'white', lineHeight: 1 }}>
+                {surveys.reduce((sum, s) => sum + Number(s.response_count || 0), 0)}
+              </Typography>
+              <Typography sx={{ color: 'rgba(255,255,255,0.85)', fontWeight: 500, mt: 0.5 }}>
+                Total responses across {surveys.length} survey{surveys.length !== 1 ? 's' : ''}
+              </Typography>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Survey Cards Grid */}
+      {/* Cards grid */}
       {loading ? (
         <Grid container spacing={3}>
           {[1, 2, 3].map((i) => (
@@ -162,23 +143,27 @@ function SurveysListPage() {
             </Grid>
           ))}
         </Grid>
-      ) : surveys.length === 0 ? (
+      ) : filteredSurveys.length === 0 ? (
         <Card sx={{ textAlign: 'center', py: 10, px: 4, border: '2px dashed #e2e8f0' }}>
           <AssignmentIcon sx={{ fontSize: 80, color: '#e0e7ff', mb: 2 }} />
           <Typography variant="h5" sx={{ fontWeight: 700, color: '#0f172a', mb: 1 }}>
-            No surveys yet
+            {filter === 'published' ? 'No published surveys' : filter === 'draft' ? 'No drafts' : 'No surveys yet'}
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 4 }}>
-            Create your first survey to start collecting responses.
+            {filter === 'published'
+              ? 'Publish a survey to see it here.'
+              : filter === 'draft'
+              ? 'All your surveys are published.'
+              : 'Create your first survey to get started.'}
           </Typography>
           <Button variant="contained" startIcon={<AddIcon />} size="large"
             onClick={() => navigate('/surveys/new')}>
-            Create Your First Survey
+            Create Survey
           </Button>
         </Card>
       ) : (
         <Grid container spacing={3}>
-          {surveys.map((survey) => (
+          {filteredSurveys.map((survey) => (
             <Grid item xs={12} md={6} lg={4} key={survey.id}>
               <Card sx={{
                 display: 'flex', flexDirection: 'column', height: '100%',
@@ -208,14 +193,14 @@ function SurveysListPage() {
                       {survey.description}
                     </Typography>
                   )}
-                  <Box sx={{ display: 'flex', gap: 2, color: 'text.secondary' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: filter === 'responses' ? '#7c3aed' : 'text.secondary' }}>
                       <PeopleIcon sx={{ fontSize: 15 }} />
-                      <Typography variant="caption">
+                      <Typography variant="caption" sx={{ fontWeight: filter === 'responses' ? 700 : 400 }}>
                         {survey.response_count || 0} response{Number(survey.response_count) !== 1 ? 's' : ''}
                       </Typography>
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
                       <CalendarTodayIcon sx={{ fontSize: 13 }} />
                       <Typography variant="caption">
                         {new Date(survey.created_at).toLocaleDateString()}

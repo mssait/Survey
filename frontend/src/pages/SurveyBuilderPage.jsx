@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box, Card, CardContent, Typography, TextField, Button, IconButton,
-  Select, MenuItem, FormControl, InputLabel, FormControlLabel, Switch,
+  FormControlLabel, Switch,
   Chip, Snackbar, Alert, CircularProgress, Divider, Tooltip, Paper,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -12,16 +12,74 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import NotesIcon from '@mui/icons-material/Notes';
+import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
+import StarRateIcon from '@mui/icons-material/StarRate';
 import { getSurvey, createSurvey, updateSurvey } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useSnackbar } from '../hooks/useSnackbar';
 
 const QUESTION_TYPES = [
-  { value: 'text', label: 'Text Answer' },
-  { value: 'multiple_choice', label: 'Multiple Choice' },
-  { value: 'checkbox', label: 'Checkboxes' },
-  { value: 'rating', label: 'Rating (1–5)' },
+  { value: 'text',            label: 'Text',           icon: <NotesIcon fontSize="small" /> },
+  { value: 'multiple_choice', label: 'Radio',          icon: <RadioButtonCheckedIcon fontSize="small" /> },
+  { value: 'checkbox',        label: 'Checkbox',       icon: <CheckBoxIcon fontSize="small" /> },
+  { value: 'rating',          label: 'Rating',         icon: <StarRateIcon fontSize="small" /> },
 ];
+
+function QuestionTypeSelector({ value, onChange }) {
+  return (
+    <Box>
+      <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, mb: 1, display: 'block' }}>
+        Question Type
+      </Typography>
+      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        {QUESTION_TYPES.map((type) => {
+          const selected = value === type.value;
+          return (
+            <Box
+              key={type.value}
+              onClick={() => onChange(type.value)}
+              sx={{
+                display: 'flex', alignItems: 'center', gap: 0.75,
+                px: 1.5, py: 1, borderRadius: 2, cursor: 'pointer',
+                border: '1.5px solid',
+                borderColor: selected ? '#6366f1' : '#e2e8f0',
+                bgcolor: selected ? '#ede9fe' : '#f8fafc',
+                color: selected ? '#6366f1' : '#64748b',
+                fontWeight: selected ? 700 : 500,
+                fontSize: 13,
+                userSelect: 'none',
+                transition: 'all 0.15s ease',
+                '&:hover': {
+                  borderColor: selected ? '#6366f1' : '#c7d2fe',
+                  bgcolor: selected ? '#ede9fe' : '#f5f3ff',
+                  color: '#6366f1',
+                },
+              }}
+            >
+              {/* Radio dot indicator */}
+              <Box sx={{
+                width: 14, height: 14, borderRadius: '50%',
+                border: `2px solid ${selected ? '#6366f1' : '#94a3b8'}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                {selected && (
+                  <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#6366f1' }} />
+                )}
+              </Box>
+              <Box sx={{ color: 'inherit', display: 'flex', alignItems: 'center' }}>{type.icon}</Box>
+              <Typography sx={{ fontSize: 13, fontWeight: 'inherit', color: 'inherit', lineHeight: 1 }}>
+                {type.label}
+              </Typography>
+            </Box>
+          );
+        })}
+      </Box>
+    </Box>
+  );
+}
 
 function newQuestion() {
   return {
@@ -101,31 +159,23 @@ function QuestionCard({ question, index, total, onChange, onRemove, onMoveUp, on
           required
         />
 
-        {/* Type + Required row */}
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: hasOptionsType ? 2 : 0 }}>
-          <FormControl size="small" sx={{ minWidth: 180 }}>
-            <InputLabel>Question Type</InputLabel>
-            <Select
-              value={question.question_type}
-              label="Question Type"
-              onChange={(e) => handleTypeChange(e.target.value)}
-            >
-              {QUESTION_TYPES.map((t) => (
-                <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={question.is_required}
-                onChange={(e) => onChange({ ...question, is_required: e.target.checked })}
-                color="primary"
-                size="small"
-              />
-            }
-            label={<Typography variant="body2" sx={{ fontWeight: 500 }}>Required</Typography>}
-          />
+        {/* Type selector + Required */}
+        <Box sx={{ mb: hasOptionsType ? 2 : 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+            <QuestionTypeSelector value={question.question_type} onChange={handleTypeChange} />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={question.is_required}
+                  onChange={(e) => onChange({ ...question, is_required: e.target.checked })}
+                  color="primary"
+                  size="small"
+                />
+              }
+              label={<Typography variant="body2" sx={{ fontWeight: 500, color: '#475569' }}>Required</Typography>}
+              sx={{ ml: 0, mr: 0 }}
+            />
+          </Box>
         </Box>
 
         {/* Options (MC / Checkbox) */}

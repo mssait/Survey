@@ -124,7 +124,7 @@ function Sidebar({ mobileOpen, onMobileClose, counts }) {
       <Box sx={{ flex: 1, overflowY: 'auto', px: collapsed ? 1 : 2, pt: 2, pb: 1 }}>
 
         {/* New Survey — special CTA item */}
-        <Tooltip title={collapsed ? 'New Survey' : ''} placement="right">
+        {/* <Tooltip title={collapsed ? 'New Survey' : ''} placement="right">
           <ListItemButton
             onClick={() => handleNav('/surveys/new')}
             sx={{
@@ -152,7 +152,7 @@ function Sidebar({ mobileOpen, onMobileClose, counts }) {
               />
             )}
           </ListItemButton>
-        </Tooltip>
+        </Tooltip> */}
 
         {/* Section label */}
         {!collapsed && (

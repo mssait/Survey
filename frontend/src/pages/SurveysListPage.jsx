@@ -174,7 +174,7 @@ function SurveysListPage() {
           <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 3 }}>
             <Box>
               <Typography variant="h5" sx={{ color: 'white', fontWeight: 800, mb: 0.5, letterSpacing: '-0.5px' }}>
-                Welcome back 👋
+                Welcome back
               </Typography>
               <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, mb: 2.5 }}>
                 You have <strong style={{ color: 'white' }}>{counts.total}</strong> survey{counts.total !== 1 ? 's' : ''} — <strong style={{ color: 'white' }}>{counts.published}</strong> published, <strong style={{ color: 'white' }}>{counts.totalResponses}</strong> total responses.
@@ -183,12 +183,12 @@ function SurveysListPage() {
                 variant="contained"
                 startIcon={<AddIcon />}
                 onClick={() => navigate('/surveys/new')}
-                sx={{ bgcolor: 'white', color: '#6366f1', fontWeight: 700, '&:hover': { bgcolor: '#f5f3ff' }, boxShadow: '0 4px 14px rgba(0,0,0,0.15)' }}
+                sx={{ bgcolor: 'white', color: 'white', fontWeight: 700, '&:hover': { bgcolor: '#f5f3ff' }, boxShadow: '0 4px 14px rgba(0,0,0,0.15)' }}
               >
                 Create New Survey
               </Button>
             </Box>
-            <Box sx={{ display: { xs: 'none', sm: 'flex' }, gap: 2 }}>
+            {/* <Box sx={{ display: { xs: 'none', sm: 'flex' }, gap: 2 }}>
               {[
                 { label: 'Published', value: counts.published, bg: 'rgba(255,255,255,0.15)' },
                 { label: 'Responses', value: counts.totalResponses, bg: 'rgba(255,255,255,0.1)' },
@@ -198,7 +198,7 @@ function SurveysListPage() {
                   <Typography sx={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, mt: 0.5 }}>{s.label}</Typography>
                 </Box>
               ))}
-            </Box>
+            </Box> */}
           </Box>
         </Paper>
       )}

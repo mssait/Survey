@@ -2,31 +2,28 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box, AppBar, Toolbar, IconButton, Typography, Avatar, Tooltip,
-  Badge, useMediaQuery, useTheme, Breadcrumbs, Link,
+  Badge, useMediaQuery, useTheme,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
-import Sidebar, { SIDEBAR_WIDTH, SIDEBAR_COLLAPSED_WIDTH } from './Sidebar';
+import Sidebar from './Sidebar';
 import { useSurveys } from '../context/SurveyContext';
 
-// Derive a readable page label from route + filter
 function usePageTitle() {
   const location = useLocation();
   const filter = new URLSearchParams(location.search).get('filter');
-  if (location.pathname === '/surveys/new') return { crumb: 'New Survey', title: 'Create New Survey' };
-  if (location.pathname.endsWith('/edit')) return { crumb: 'Edit Survey', title: 'Edit Survey' };
-  if (location.pathname.endsWith('/results')) return { crumb: 'Results', title: 'Survey Results' };
-  if (filter === 'published') return { crumb: 'Published', title: 'Published Surveys' };
-  if (filter === 'draft') return { crumb: 'Drafts', title: 'Draft Surveys' };
-  if (filter === 'responses') return { crumb: 'Responses', title: 'Total Responses' };
-  return { crumb: 'Dashboard', title: 'Dashboard' };
+  if (location.pathname === '/surveys/new') return 'Create New Survey';
+  if (location.pathname.endsWith('/edit')) return 'Edit Survey';
+  if (location.pathname.endsWith('/results')) return 'Survey Results';
+  if (filter === 'published') return 'Published Surveys';
+  if (filter === 'draft') return 'Draft Surveys';
+  if (filter === 'responses') return 'Total Responses';
+  return 'Dashboard';
 }
 
 function TopNavbar({ onMenuClick }) {
-  const { title, crumb } = usePageTitle();
-  const navigate = useNavigate();
+  const title = usePageTitle();
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
 
@@ -49,16 +46,8 @@ function TopNavbar({ onMenuClick }) {
           </IconButton>
         )}
 
-        {/* Breadcrumb / Page Title */}
+        {/* Page Title */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          {isDesktop && (
-            <Breadcrumbs separator={<NavigateNextIcon fontSize="small" sx={{ color: '#cbd5e1' }} />} sx={{ mb: 0.25 }}>
-              <Link underline="hover" onClick={() => navigate('/')} sx={{ cursor: 'pointer', fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>
-                Home
-              </Link>
-              <Typography sx={{ fontSize: 12, color: '#6366f1', fontWeight: 600 }}>{crumb}</Typography>
-            </Breadcrumbs>
-          )}
           <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: 16, md: 17 }, color: '#0f172a', lineHeight: 1.2, letterSpacing: '-0.3px' }}>
             {title}
           </Typography>
